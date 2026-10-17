@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Potato Doctor – Leaf Disease Detector</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --soil: #3b2a1a;
+    --soil-soft: #6b4f35;
+    --potato: #c99a5b;
+    --potato-light: #e8cfa2;
+    --cream: #faf4e4;
+    --leaf: #4a7c3a;
+    --leaf-dark: #2f5a27;
+    --leaf-light: #a9cf8d;
+    --warn: #c8872b;
+    --danger: #b04a2f;
+    --radius: 22px;
+    --shadow: 0 18px 40px -18px rgba(59, 42, 26, .45);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Nunito', system-ui, sans-serif;
+    color: var(--soil);
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 10% 8%, rgba(169,207,141,.45) 0, transparent 38%),
+      radial-gradient(circle at 92% 90%, rgba(201,154,91,.40) 0, transparent 40%),
+      var(--cream);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 0 18px 50px;
+  }
+  /* decorative leaves */
+  .leaf-deco { position: fixed; font-size: 90px; opacity: .12; pointer-events: none; user-select: none; }
+  .l1 { top: 6%; right: 6%; transform: rotate(25deg); }
+  .l2 { bottom: 8%; left: 4%; transform: rotate(-30deg); }
+
+  header { text-align: center; padding: 52px 0 26px; max-width: 700px; }
+  .logo {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 76px; height: 76px; border-radius: 50%;
+    background: linear-gradient(145deg, var(--potato-light), var(--potato));
+    font-size: 40px; box-shadow: var(--shadow); margin-bottom: 14px;
+  }
+  h1 { font-family: 'Fraunces', serif; font-weight: 800; font-size: clamp(2rem, 5vw, 3rem); color: var(--leaf-dark); letter-spacing: -.5px; }
+  h1 span { color: var(--potato); }
+  header p { margin-top: 12px; color: var(--soil-soft); font-size: 1.08rem; line-height: 1.6; }
+
+  .card {
+    width: 100%; max-width: 640px; background: #fffdf6;
+    border: 1px solid rgba(201,154,91,.35);
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px;
+  }
+
+  .dropzone {
+    display: block; width: 100%;
+    border: 2.5px dashed var(--potato);
+    border-radius: 18px; background: linear-gradient(180deg, #fbf3df, #f6ecd2);
+    padding: 38px 20px; text-align: center; cursor: pointer;
+    transition: .25s; position: relative; overflow: hidden;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--leaf); background: #eef5e3; transform: translateY(-2px); }
+  .dropzone .icon { font-size: 46px; margin-bottom: 8px; }
+  .dropzone h3 { font-family: 'Fraunces', serif; font-size: 1.3rem; color: var(--leaf-dark); }
+  .dropzone p { color: var(--soil-soft); margin-top: 6px; font-size: .95rem; }
+  .dropzone input { display: none; }
+
+  .preview { display: none; position: relative; }
+  .preview img {
+    width: 100%; max-height: 380px; object-fit: contain; border-radius: 16px;
+    background: #f3e8cc; border: 1px solid rgba(201,154,91,.4);
+  }
+  .remove {
+    position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border-radius: 50%;
+    border: none; background: rgba(59,42,26,.8); color: #fff; font-size: 18px; cursor: pointer; transition: .2s;
+  }
+  .remove:hover { background: var(--danger); transform: scale(1.08); }
+
+  .btn {
+    display: block; width: 100%; margin-top: 20px; padding: 16px; border: none; border-radius: 14px;
+    font-family: inherit; font-weight: 700; font-size: 1.08rem; letter-spacing: .3px; cursor: pointer;
+    color: #fff; background: linear-gradient(135deg, var(--leaf), var(--leaf-dark));
+    box-shadow: 0 10px 22px -10px var(--leaf-dark); transition: .2s;
+  }
+  .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 14px 26px -10px var(--leaf-dark); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  .loader { display: none; text-align: center; margin-top: 24px; color: var(--soil-soft); font-weight: 600; }
+  .spinner {
+    width: 46px; height: 46px; margin: 0 auto 10px; border-radius: 50%;
+    border: 5px solid var(--potato-light); border-top-color: var(--leaf);
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .result { display: none; margin-top: 26px; border-radius: 18px; padding: 24px; animation: pop .45s ease; border: 2px solid; }
+  @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+  .result.healthy { background: #eef6e2; border-color: var(--leaf-light); }
+  .result.early   { background: #fbf0dc; border-color: #e6bd75; }
+  .result.late    { background: #f9e5dd; border-color: #e0a38f; }
+  .result .tag { font-size: .8rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; color: var(--soil-soft); }
+  .result .name { font-family: 'Fraunces', serif; font-size: 2rem; font-weight: 800; margin: 4px 0 14px; display: flex; align-items: center; gap: 10px; }
+  .healthy .name { color: var(--leaf-dark); } .early .name { color: var(--warn); } .late .name { color: var(--danger); }
+  .bar-label { display: flex; justify-content: space-between; font-weight: 700; font-size: .95rem; margin-bottom: 6px; }
+  .bar { height: 14px; background: rgba(59,42,26,.12); border-radius: 99px; overflow: hidden; }
+  .bar > div { height: 100%; width: 0; border-radius: 99px; transition: width 1s cubic-bezier(.2,.8,.2,1); }
+  .healthy .bar > div { background: linear-gradient(90deg, var(--leaf-light), var(--leaf)); }
+  .early .bar > div { background: linear-gradient(90deg, #f0cf8a, var(--warn)); }
+  .late .bar > div { background: linear-gradient(90deg, #e9a590, var(--danger)); }
+  .advice { margin-top: 18px; line-height: 1.6; color: var(--soil); font-size: .98rem; }
+  .advice strong { color: var(--soil); }
+
+  .error { display: none; margin-top: 20px; padding: 14px 16px; border-radius: 12px; background: #f9e5dd; color: var(--danger); font-weight: 600; border: 1px solid #e0a38f; line-height: 1.5; }
+
+  .reset { display: none; margin: 14px auto 0; background: none; border: none; color: var(--leaf-dark); font-weight: 700; font-family: inherit; font-size: 1rem; cursor: pointer; text-decoration: underline; }
+
+  footer { margin-top: 34px; color: var(--soil-soft); font-size: .9rem; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="leaf-deco l1">🍃</div>
+  <div class="leaf-deco l2">🌿</div>
+
+  <header>
+    <div class="logo">🥔</div>
+    <h1>Potato <span>Doctor</span></h1>
+    <p>Upload a photo of a potato leaf and our AI will tell you if it's healthy or suffering from early or late blight.</p>
+  </header>
+
+  <main class="card">
+    <label class="dropzone" id="dropzone">
+      <div class="icon">🌱</div>
+      <h3>Drop your leaf image here</h3>
+      <p>or click to browse &middot; JPG, PNG</p>
+      <input type="file" id="fileInput" accept="image/*" />
+    </label>
+
+    <div class="preview" id="preview">
+      <img id="previewImg" alt="Selected potato leaf" />
+      <button class="remove" id="removeBtn" title="Remove image">✕</button>
+    </div>
+
+    <button class="btn" id="predictBtn" disabled>🔍 Analyze Leaf</button>
+
+    <div class="loader" id="loader"><div class="spinner"></div>Examining your leaf…</div>
+    <div class="error" id="error"></div>
+
+    <div class="result" id="result">
+      <div class="tag">Diagnosis</div>
+      <div class="name"><span id="resIcon"></span><span id="resName"></span></div>
+      <div class="bar-label"><span>Confidence</span><span id="resConf"></span></div>
+      <div class="bar"><div id="resBar"></div></div>
+      <p class="advice" id="resAdvice"></p>
+    </div>
+
+    <button class="reset" id="resetBtn">↺ Analyze another leaf</button>
+  </main>
+
+  <footer>Made with 🌿 for healthier potato harvests</footer>
+
+<script>
+  const API_URL = "http://localhost:8000/predict";
+
+  const INFO = {
+    "Healthy": {
+      cls: "healthy", icon: "✅",
+      advice: "<strong>Great news!</strong> Your plant looks healthy. Keep up regular watering, good spacing for air flow, and routine checks of your leaves."
+    },
+    "Early Blight": {
+      cls: "early", icon: "⚠️",
+      advice: "<strong>Early blight</strong> is a fungal disease (<em>Alternaria solani</em>) that causes brown spots with concentric rings. Remove affected leaves, avoid overhead watering, rotate crops, and consider a suitable fungicide."
+    },
+    "Late Blight": {
+      cls: "late", icon: "🚨",
+      advice: "<strong>Late blight</strong> is serious and spreads fast, especially in cool, wet weather. Remove and destroy infected plants right away, don't compost them, and apply a recommended fungicide to protect nearby plants."
+    }
+  };
+
+  const $ = id => document.getElementById(id);
+  const dropzone = $("dropzone"), fileInput = $("fileInput"), preview = $("preview"),
+        previewImg = $("previewImg"), predictBtn = $("predictBtn"), loader = $("loader"),
+        errorBox = $("error"), result = $("result"), resetBtn = $("resetBtn");
+  let selectedFile = null;
+
+  function setFile(file) {
+    if (!file || !file.type.startsWith("image/")) { showError("Please choose a valid image file."); return; }
+    selectedFile = file;
+    previewImg.src = URL.createObjectURL(file);
+    dropzone.style.display = "none";
+    preview.style.display = "block";
+    predictBtn.disabled = false;
+    result.style.display = "none"; errorBox.style.display = "none"; resetBtn.style.display = "none";
+  }
+
+  function clearAll() {
+    selectedFile = null; fileInput.value = "";
+    preview.style.display = "none"; dropzone.style.display = "block";
+    predictBtn.disabled = true; predictBtn.style.display = "block";
+    result.style.display = "none"; errorBox.style.display = "none"; resetBtn.style.display = "none";
+    $("resBar").style.width = "0";
+  }
+
+  function showError(msg) { errorBox.textContent = msg; errorBox.style.display = "block"; }
+
+  fileInput.addEventListener("change", e => setFile(e.target.files[0]));
+  ["dragenter", "dragover"].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add("drag"); }));
+  ["dragleave", "drop"].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove("drag"); }));
+  dropzone.addEventListener("drop", e => setFile(e.dataTransfer.files[0]));
+  $("removeBtn").addEventListener("click", clearAll);
+  resetBtn.addEventListener("click", clearAll);
+
+  predictBtn.addEventListener("click", async () => {
+    if (!selectedFile) return;
+    errorBox.style.display = "none"; result.style.display = "none";
+    loader.style.display = "block"; predictBtn.disabled = true;
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      const res = await fetch(API_URL, { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Server responded with status " + res.status);
+      const data = await res.json();
+
+      const info = INFO[data.class] || INFO["Healthy"];
+      const pct = parseFloat(data.confidence);
+
+      result.className = "result " + info.cls;
+      $("resIcon").textContent = info.icon;
+      $("resName").textContent = data.class;
+      $("resConf").textContent = data.confidence;
+      $("resAdvice").innerHTML = info.advice;
+      result.style.display = "block";
+      $("resBar").style.width = "0";
+      requestAnimationFrame(() => setTimeout(() => $("resBar").style.width = pct + "%", 50));
+
+      predictBtn.style.display = "none";
+      resetBtn.style.display = "block";
+    } catch (err) {
+      showError("Couldn't get a prediction. Make sure your API is running at " + API_URL + " and that CORS is enabled. (" + err.message + ")");
+      predictBtn.disabled = false;
+    } finally {
+      loader.style.display = "none";
+    }
+  });
+</script>
+</body>
+</html>
